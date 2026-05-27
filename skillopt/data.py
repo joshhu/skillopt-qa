@@ -1,11 +1,11 @@
-"""HotpotQA data loading and split construction.
+"""HotpotQA 資料載入與切分建立。
 
-SkillOpt expects each split as a JSON array of task items. For QA an item is::
+SkillOpt 預期每個切分是一個 JSON 陣列,陣列中每個任務項目格式為::
 
     {"id": str, "question": str, "context": str, "answers": [str, ...]}
 
-`context` is the concatenation of the candidate paragraphs (distractor setting),
-mirroring the SearchQA-style format SkillOpt ships with.
+`context` 是候選段落(distractor 設定)串接後的純文字,對應 SkillOpt 內建的
+SearchQA 風格格式。
 """
 
 from __future__ import annotations
@@ -17,17 +17,17 @@ from typing import Any
 
 
 def _format_context(context: Any) -> str:
-    """Flatten HotpotQA's structured context into plain text paragraphs.
+    """把 HotpotQA 的結構化 context 攤平成純文字段落。
 
-    The HF `distractor` config stores context as {"title": [...],
-    "sentences": [[...], ...]}; older dumps use a list of [title, sentences].
+    HF 的 `distractor` 設定把 context 存成 {"title": [...],
+    "sentences": [[...], ...]};較舊的 dump 則用 [title, sentences] 的清單。
     """
     titles: list[str]
     sentences: list[list[str]]
     if isinstance(context, dict):
         titles = context.get("title", [])
         sentences = context.get("sentences", [])
-    else:  # list of [title, [sent, ...]]
+    else:  # [title, [sent, ...]] 形式的清單
         titles = [c[0] for c in context]
         sentences = [c[1] for c in context]
 
@@ -55,11 +55,10 @@ def build_split(
     seed: int = 0,
     hf_config: str = "distractor",
 ) -> Path:
-    """Download HotpotQA from HuggingFace and write train/val/test items.
+    """從 HuggingFace 下載 HotpotQA 並寫出 train/val/test 項目。
 
-    Train and val are sampled from the HF `train` split; test from `validation`
-    (HotpotQA's test set has no public answers), so the test set stays unseen
-    during optimization.
+    train 與 val 取樣自 HF 的 `train` 切分;test 取自 `validation`
+    (HotpotQA 的 test 集沒有公開答案),因此 test 集在優化過程中始終未被看過。
     """
     from datasets import load_dataset
 

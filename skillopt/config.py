@@ -1,8 +1,8 @@
-"""Configuration loading for SkillOpt.
+"""SkillOpt 的設定載入。
 
-A run is parameterised by a single YAML file plus optional CLI overrides.
-The config covers three concerns: which model serves the agent/optimizer,
-the training hyper-parameters (epochs, batch size, ...), and bookkeeping.
+一次 run 由單一 YAML 檔加上選擇性的 CLI 覆寫參數決定。設定涵蓋三個面向:
+要用哪個模型來擔任 agent/optimizer、訓練超參數(epoch、batch size……),
+以及記錄用的雜項。
 """
 
 from __future__ import annotations
@@ -17,15 +17,15 @@ import yaml
 
 @dataclass
 class ModelConfig:
-    """Where the LLM lives and how to call it.
+    """LLM 在哪裡、以及如何呼叫它。
 
-    `base_url` defaults to a local vLLM OpenAI-compatible server. The same
-    server can host both the target (agent) and optimizer models; set
-    `optimizer_model` to a stronger model if you have one.
+    `base_url` 預設指向本機 vLLM 的 OpenAI 相容服務。同一個服務可同時擔任
+    target(agent)與 optimizer 模型;若你有更強的模型,可把 `optimizer_model`
+    設成它。
     """
 
     base_url: str = "http://localhost:8000/v1"
-    api_key_env: str = "OPENAI_API_KEY"  # vLLM ignores the value, but the SDK requires one
+    api_key_env: str = "OPENAI_API_KEY"  # vLLM 不檢查值,但 SDK 仍要求要有
     target_model: str = "Qwen/Qwen2.5-7B-Instruct"
     optimizer_model: str = "Qwen/Qwen2.5-7B-Instruct"
     temperature: float = 0.0
@@ -38,22 +38,22 @@ class ModelConfig:
 
 @dataclass
 class TrainConfig:
-    """Training-as-optimization hyper-parameters (cf. the paper)."""
+    """把訓練當成優化的超參數(對應論文)。"""
 
     num_epochs: int = 3
-    batch_size: int = 8          # train items rolled out per optimization step
-    val_size: int = 50           # how many val items to gate on (0 = all)
-    workers: int = 8             # parallel rollout workers (IO-bound API calls)
-    patience: int = 4            # stop after this many consecutive rejected steps
-    min_improvement: float = 0.0  # val metric must improve by at least this to accept
+    batch_size: int = 8          # 每次優化步驟所 rollout 的 train 筆數
+    val_size: int = 50           # 用來把關的 val 筆數(0 = 全部)
+    workers: int = 8             # 平行 rollout 的 worker 數(API 呼叫是 IO-bound)
+    patience: int = 4            # 連續被拒絕這麼多次就提早停止
+    min_improvement: float = 0.0  # val 指標至少要提升這麼多才接受
     seed: int = 0
 
 
 @dataclass
 class Config:
     benchmark: str = "hotpotqa"
-    metric: str = "f1"          # primary val gate metric: "f1" or "em"
-    seed_skill: str = ""        # initial skill text; empty -> a tiny generic seed
+    metric: str = "f1"          # 主要的 val 把關指標:"f1" 或 "em"
+    seed_skill: str = ""        # 初始技能文字;留空則使用內建的小型種子技能
     model: ModelConfig = field(default_factory=ModelConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
 
@@ -70,9 +70,9 @@ class Config:
         return Config(model=model, train=train, **raw)
 
     def apply_overrides(self, overrides: dict[str, Any]) -> "Config":
-        """Apply flat CLI overrides like {"target_model": "...", "num_epochs": 5}.
+        """套用扁平的 CLI 覆寫,例如 {"target_model": "...", "num_epochs": 5}。
 
-        Keys are routed to the matching nested section automatically.
+        每個 key 會自動被導向對應的巢狀區段。
         """
         model_fields = {f.name for f in dataclasses.fields(ModelConfig)}
         train_fields = {f.name for f in dataclasses.fields(TrainConfig)}

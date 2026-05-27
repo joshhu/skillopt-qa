@@ -1,8 +1,7 @@
-"""SQuAD/HotpotQA-style answer scoring (Exact Match and token F1).
+"""SQuAD/HotpotQA 風格的答案評分(Exact Match 與 token F1)。
 
-Normalization follows the official HotpotQA eval: lowercase, strip articles,
-drop punctuation, collapse whitespace. A trajectory is marked `correct` on
-exact match after normalization.
+正規化沿用官方 HotpotQA 評估:轉小寫、移除冠詞、去標點、收斂空白。
+正規化後完全相符即把該軌跡標記為 `correct`。
 """
 
 from __future__ import annotations
@@ -59,7 +58,7 @@ class EvalResult:
 
 
 def evaluate(trajectories: list[Trajectory]) -> EvalResult:
-    """Score trajectories in place (sets `.correct`) and aggregate."""
+    """就地評分(設定 `.correct`)並彙總。"""
     if not trajectories:
         return EvalResult(em=0.0, f1=0.0, n=0)
     em_sum = f1_sum = 0.0

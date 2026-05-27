@@ -1,9 +1,8 @@
-"""The SkillOpt training loop.
+"""SkillOpt 訓練迴圈。
 
-Treats skill learning like model training: epochs over the train set, mini-batch
-rollouts, a candidate edit per step, and a validation gate that accepts the edit
-only if the held-out metric improves. The single surviving artifact is
-`best_skill.md` — deployable and model-agnostic.
+把技能學習當成模型訓練:在 train 集上跑 epoch、以 mini-batch rollout、每步產生
+一次候選編輯,再用驗證閘門把關——只有保留集指標提升時才接受該編輯。最後唯一
+留存的產物是 `best_skill.md`,可部署且與模型無關。
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ class Trainer:
         self.history: list[dict] = []
         self.version = 0
 
-    # -- evaluation helpers -------------------------------------------------
+    # -- 評估輔助 -----------------------------------------------------------
     def _val_metric(self, skill: str, val_items: list) -> evaluator.EvalResult:
         trajs = agent.run_batch(self.llm, self.cfg, skill, val_items)
         return evaluator.evaluate(trajs)
@@ -44,7 +43,7 @@ class Trainer:
         self.version += 1
         (self.out / "skills" / f"skill_v{self.version:04d}_{tag}.md").write_text(skill)
 
-    # -- main loop ----------------------------------------------------------
+    # -- 主迴圈 -------------------------------------------------------------
     def fit(self, train_items: list, val_items: list) -> str:
         cfg = self.cfg
         rng = random.Random(cfg.train.seed)
@@ -70,15 +69,15 @@ class Trainer:
             rng.shuffle(order)
             for batch in _batches(order, cfg.train.batch_size):
                 step += 1
-                # 1. roll out current skill on the train batch
+                # 1. 用目前最佳技能在 train batch 上 rollout
                 trajs = agent.run_batch(self.llm, self.cfg, best_skill, batch)
                 train_eval = evaluator.evaluate(trajs)
 
-                # 2. propose a bounded edit from the trajectory evidence
+                # 2. 依軌跡證據提出一次有界編輯
                 candidate = optimizer.propose_skill(
                     self.llm, self.cfg, best_skill, trajs, state)
 
-                # 3. validation gate
+                # 3. 驗證閘門
                 cand_eval = self._val_metric(candidate, val_items)
                 cand_metric = cand_eval.metric(metric_name)
                 improved = cand_metric > best_metric + cfg.train.min_improvement
@@ -103,7 +102,7 @@ class Trainer:
                 if improved:
                     best_metric, best_skill = cand_metric, candidate
                     no_improve = 0
-                    state = optimizer.OptimizerState()  # clear rejections on progress
+                    state = optimizer.OptimizerState()  # 有進展就清空拒絕記憶
                     print(f"[step {step}] ACCEPT  val {metric_name}={best_metric:.4f} "
                           f"(train_f1={train_eval.f1:.3f})")
                 else:
@@ -129,6 +128,6 @@ class Trainer:
 
 def evaluate_skill(cfg: Config, llm: ChatLLM, skill: str,
                    items: list) -> evaluator.EvalResult:
-    """Score a fixed skill on a (test) set — used after training."""
+    """在固定技能上對某個(test)集評分——訓練後使用。"""
     trajs = agent.run_batch(llm, cfg, skill, items)
     return evaluator.evaluate(trajs)

@@ -1,9 +1,9 @@
-"""Run SkillOpt training, then evaluate the best skill on the test set.
+"""執行 SkillOpt 訓練,接著在 test 集上評估最佳技能。
 
     uv run skillopt-train --config configs/hotpotqa/default.yaml \
         --split-dir data/hotpotqa --out-root outputs
 
-CLI flags override the matching config fields.
+CLI 旗標會覆寫對應的設定欄位。
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def main() -> None:
     p.add_argument("--split-dir", default="data/hotpotqa")
     p.add_argument("--out-root", default="outputs")
     p.add_argument("--run-name", default=None)
-    # common overrides
+    # 常用覆寫參數
     p.add_argument("--base-url", dest="base_url")
     p.add_argument("--target-model", dest="target_model")
     p.add_argument("--optimizer-model", dest="optimizer_model")
@@ -34,7 +34,7 @@ def main() -> None:
     p.add_argument("--val-size", dest="val_size", type=int)
     p.add_argument("--workers", dest="workers", type=int)
     p.add_argument("--metric", choices=["em", "f1"])
-    p.add_argument("--no-test", action="store_true", help="skip final test evaluation")
+    p.add_argument("--no-test", action="store_true", help="略過最終的 test 評估")
     args = p.parse_args()
 
     cfg = Config.from_yaml(args.config)

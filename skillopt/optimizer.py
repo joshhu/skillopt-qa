@@ -1,16 +1,14 @@
-"""The text-space optimizer.
+"""文字空間優化器。
 
-This is the core of SkillOpt: instead of updating model weights, an optimizer
-LLM reads a batch of agent trajectories (successes and, especially, failures)
-and proposes a *bounded* edit to the natural-language skill. The trainer then
-gates the candidate on validation data and keeps it only if it helps.
+這是 SkillOpt 的核心:不更新模型權重,而是由一個 optimizer LLM 讀取一批 agent
+軌跡(成功的,尤其是失敗的),對自然語言技能提出一次「**有界**」編輯。接著由
+trainer 在驗證資料上把關,只有確實有幫助的候選才會被保留。
 
-Stabilizers from the paper that we implement here:
-  - "enough evidence": show both correct and incorrect trajectories;
-  - "bounded textual updates": ask for small, targeted edits, not rewrites;
-  - "rejected-edit feedback": tell the optimizer which past edits were rejected
-    so it does not repeat them;
-  - "slow update": one edit per optimization step, validation-gated.
+此處實作了論文中的穩定機制:
+  - 「足夠證據」:同時呈現答對與答錯的軌跡;
+  - 「有界文字更新」:要求小而精準的編輯,而非整篇重寫;
+  - 「拒絕編輯回饋」:告訴 optimizer 哪些過往編輯被拒絕,以免重複;
+  - 「慢更新」:每個優化步驟只做一次編輯,且須通過驗證閘門。
 """
 
 from __future__ import annotations
@@ -21,6 +19,7 @@ from .agent import Trajectory
 from .config import Config
 from .llm import ChatLLM
 
+# 注意:種子技能與 optimizer 的 system prompt 刻意保留英文,對模型較穩定。
 SEED_SKILL = (
     "Read the question carefully and identify which paragraphs are relevant. "
     "Combine facts across paragraphs when the question requires multiple hops. "
@@ -45,12 +44,12 @@ _OPTIMIZER_SYSTEM = (
 
 @dataclass
 class OptimizerState:
-    """Carries cross-step memory: edits that were tried and rejected."""
+    """承載跨步驟的記憶:曾經嘗試但被拒絕的編輯。"""
 
     rejected_edits: list[str] = field(default_factory=list)
 
     def remember_rejection(self, skill: str) -> None:
-        # Keep only a short tail to bound the prompt size.
+        # 只保留最近少數幾筆,以限制 prompt 大小。
         self.rejected_edits.append(skill)
         self.rejected_edits = self.rejected_edits[-3:]
 
@@ -75,10 +74,10 @@ def propose_skill(
     state: OptimizerState,
     evidence_limit: int = 12,
 ) -> str:
-    """Ask the optimizer model for a revised skill given batch evidence."""
+    """根據這一批的證據,請 optimizer 模型提出修訂後的技能。"""
     wrong = [t for t in trajectories if not t.correct]
     right = [t for t in trajectories if t.correct]
-    # Lead with failures (most informative) but include some successes.
+    # 先列失敗(資訊量最大),再附上部分成功案例。
     evidence = _render_trajectories(wrong + right, evidence_limit)
 
     rejected_block = ""

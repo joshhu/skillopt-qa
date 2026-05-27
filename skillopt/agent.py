@@ -1,8 +1,8 @@
-"""The frozen QA agent.
+"""凍結的 QA agent。
 
-The agent is *not* trained. Its only tunable input is the skill text, which is
-injected into the system prompt. Given a task item it produces an answer; we
-record a lightweight trajectory for the optimizer to learn from.
+這個 agent 不會被訓練。它唯一可調整的輸入就是技能文字,該文字會被注入到
+system prompt。給定一個任務項目,它會產生答案;我們記錄一份輕量的軌跡供
+optimizer 從中學習。
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from typing import Any
 from .config import Config
 from .llm import ChatLLM
 
+# 注意:給模型的 prompt 字串刻意保留英文,實務上對模型推理較穩定。
 BASE_INSTRUCTIONS = (
     "You are a question-answering agent. You are given a question and reference "
     "context made of titled paragraphs. Answer using only the context.\n"
@@ -31,7 +32,7 @@ class Trajectory:
     gold: list[str]
     prediction: str
     raw_response: str
-    correct: bool = False  # filled in by the evaluator
+    correct: bool = False  # 由 evaluator 填入
 
 
 def _build_user_prompt(item: dict[str, Any]) -> str:
@@ -43,12 +44,12 @@ def _build_user_prompt(item: dict[str, Any]) -> str:
 
 
 def _parse_answer(raw: str) -> str:
-    """Extract the answer, tolerating models that add a prefix or extra lines."""
+    """擷取答案,容忍模型加上前綴或多餘行數的情況。"""
     text = raw.strip()
     if ANSWER_TAG.lower() in text.lower():
         idx = text.lower().rindex(ANSWER_TAG.lower())
         text = text[idx + len(ANSWER_TAG):].strip()
-    # Keep the first non-empty line only.
+    # 只保留第一行非空白內容。
     for line in text.splitlines():
         line = line.strip()
         if line:
@@ -76,7 +77,7 @@ def run_one(llm: ChatLLM, cfg: Config, skill: str, item: dict[str, Any]) -> Traj
 
 def run_batch(llm: ChatLLM, cfg: Config, skill: str,
               items: list[dict[str, Any]]) -> list[Trajectory]:
-    """Roll out the agent over items in parallel (API calls are IO-bound)."""
+    """平行 rollout agent 跑過所有項目(API 呼叫是 IO-bound)。"""
     workers = max(1, cfg.train.workers)
     if workers == 1:
         return [run_one(llm, cfg, skill, it) for it in items]
