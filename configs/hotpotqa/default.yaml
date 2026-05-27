@@ -1,0 +1,24 @@
+benchmark: hotpotqa
+metric: f1            # validation gate metric: "f1" or "em"
+seed_skill: ""       # empty -> use the built-in generic seed skill
+
+model:
+  base_url: "http://localhost:8000/v1"   # your local Qwen OpenAI-compatible endpoint
+  api_key_env: "OPENAI_API_KEY"          # value is ignored by most local servers
+  target_model: "Qwen/Qwen2.5-7B-Instruct"     # MUST match the id your server reports
+  optimizer_model: "Qwen/Qwen2.5-7B-Instruct"
+  temperature: 0.0          # agent answers deterministically
+  optimizer_temperature: 0.7
+  max_tokens: 512
+  optimizer_max_tokens: 2048
+  timeout: 120.0
+  max_retries: 4
+
+train:
+  num_epochs: 3
+  batch_size: 8
+  val_size: 50        # gate on this many val items per step (0 = all)
+  workers: 8          # parallel rollout workers
+  patience: 4         # early stop after N consecutive rejected edits
+  min_improvement: 0.0
+  seed: 0
