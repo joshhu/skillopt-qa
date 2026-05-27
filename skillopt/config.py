@@ -32,8 +32,11 @@ class ModelConfig:
     optimizer_temperature: float = 0.7
     max_tokens: int = 512
     optimizer_max_tokens: int = 2048
-    timeout: float = 120.0
+    timeout: float = 300.0
     max_retries: int = 4
+    # 對 Qwen3 等 reasoning 模型:設 False 會透過 vLLM 的
+    # chat_template_kwargs 停用思考,大幅加速(QA 抽取不需長 CoT)。
+    enable_thinking: bool = True
 
 
 @dataclass

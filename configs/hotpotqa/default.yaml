@@ -1,24 +1,25 @@
 benchmark: hotpotqa
-metric: f1            # validation gate metric: "f1" or "em"
-seed_skill: ""       # empty -> use the built-in generic seed skill
+metric: f1            # 驗證閘門指標:"f1" 或 "em"
+seed_skill: ""       # 留空 -> 使用內建的通用種子技能
 
 model:
-  base_url: "http://localhost:8080/v1"   # local vLLM (docker-proxy maps host 8080 -> container 8000)
-  api_key_env: "OPENAI_API_KEY"          # value is ignored by most local servers
-  target_model: "qwen3.6-27b"     # served-model-name reported by the local vLLM server
+  base_url: "http://localhost:8080/v1"   # 本機 vLLM(docker-proxy 把 host 8080 映射到容器內 8000)
+  api_key_env: "OPENAI_API_KEY"          # 多數本機服務會忽略此值
+  target_model: "qwen3.6-27b"            # 你的 vLLM 服務回報的 served-model-name
   optimizer_model: "qwen3.6-27b"
-  temperature: 0.0          # agent answers deterministically
+  temperature: 0.0          # agent 以確定性方式作答
   optimizer_temperature: 0.7
-  max_tokens: 2048          # reasoning model: budget must cover thinking + answer
-  optimizer_max_tokens: 4096   # reasoning model: thinking + revised skill
-  timeout: 120.0
+  enable_thinking: false    # 關閉 Qwen3 思考以大幅加速(QA 抽取不需長 CoT)
+  max_tokens: 512           # 思考關閉後,答案很短即可
+  optimizer_max_tokens: 1024
+  timeout: 300.0            # reasoning 模型/高負載下需較長 timeout
   max_retries: 4
 
 train:
-  num_epochs: 3
+  num_epochs: 2
   batch_size: 8
-  val_size: 50        # gate on this many val items per step (0 = all)
-  workers: 8          # parallel rollout workers
-  patience: 4         # early stop after N consecutive rejected edits
+  val_size: 24        # 每步用這麼多 val 筆數把關(0 = 全部)
+  workers: 16         # 平行 rollout worker 數
+  patience: 4         # 連續被拒絕 N 次就提早停止
   min_improvement: 0.0
   seed: 0

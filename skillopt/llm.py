@@ -35,6 +35,11 @@ class OpenAICompatLLM:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
+        # reasoning 模型可關閉思考以加速(vLLM 透過 chat_template_kwargs 控制)。
+        extra_body = {}
+        if not self.cfg.enable_thinking:
+            extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+
         last_err: Exception | None = None
         for attempt in range(self.cfg.max_retries):
             try:
@@ -43,6 +48,7 @@ class OpenAICompatLLM:
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    extra_body=extra_body,
                 )
                 return (resp.choices[0].message.content or "").strip()
             except Exception as err:  # noqa: BLE001 - 暫時性的 API/網路錯誤
