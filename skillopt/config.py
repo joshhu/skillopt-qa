@@ -56,7 +56,8 @@ class TrainConfig:
 class Config:
     benchmark: str = "hotpotqa"
     metric: str = "f1"          # 主要的 val 把關指標:"f1" 或 "em"
-    seed_skill: str = ""        # 初始技能文字;留空則使用內建的小型種子技能
+    seed_skill: str = ""        # 初始技能文字;留空則使用內建種子(依 skill_language)
+    skill_language: str = "en"  # 產出 SKILL 的語言:"en" 或 "zh-Hant"(以 "zh" 開頭即繁中)
     model: ModelConfig = field(default_factory=ModelConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
 

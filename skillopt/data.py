@@ -91,6 +91,76 @@ def build_split(
     return out_dir
 
 
+# --- DRCD(繁體中文閱讀理解)-------------------------------------------------
+# DRCD(`voidful/DRCD`)是 SQuAD 式繁體中文資料集,巢狀結構為:
+#   row = {title, id, paragraphs: [{context, id,
+#            qas: [{id, question, answers: [{text, answer_start}, ...]}]}]}
+# 我們攤平成「每個 qa 一筆」item,沿用與 HotpotQA 相同的 item 結構與 `## 標題` 慣例。
+
+
+def _flatten_drcd(rows: Any) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        title = str(row.get("title", "")).strip()
+        for para in row.get("paragraphs", []):
+            context = str(para.get("context", "")).strip()
+            heading = f"## {title}\n{context}" if title else context
+            for qa in para.get("qas", []):
+                answers = qa.get("answers", []) or []
+                texts: list[str] = []
+                for a in answers:
+                    t = str(a.get("text", "")).strip()
+                    if t and t not in texts:  # 去重、保序
+                        texts.append(t)
+                if not texts:
+                    continue
+                items.append({
+                    "id": str(qa.get("id", len(items))),
+                    "question": str(qa["question"]).strip(),
+                    "context": heading,
+                    "answers": texts,
+                })
+    return items
+
+
+def build_drcd_split(
+    out_dir: str | Path,
+    n_train: int = 64,
+    n_val: int = 64,
+    n_test: int = 200,
+    seed: int = 0,
+) -> Path:
+    """從 HuggingFace 下載 DRCD 並寫出 train/val/test 項目(繁體中文)。
+
+    train 與 val 取樣自 HF 的 `train` 切分;test 取自 `test` 切分,因此 test 集在
+    優化過程中始終未被看過。
+    """
+    from datasets import load_dataset
+
+    out_dir = Path(out_dir)
+    rng = random.Random(seed)
+
+    train_pool = _flatten_drcd(load_dataset("voidful/DRCD", split="train"))
+    test_pool = _flatten_drcd(load_dataset("voidful/DRCD", split="test"))
+
+    rng.shuffle(train_pool)
+    need = n_train + n_val
+    if need > len(train_pool):
+        raise ValueError(f"Requested {need} items but DRCD train has {len(train_pool)}")
+    train_sel = train_pool[:n_train]
+    val_sel = train_pool[n_train:n_train + n_val]
+
+    rng.shuffle(test_pool)
+    test_sel = test_pool[:n_test]
+
+    splits = {"train": train_sel, "val": val_sel, "test": test_sel}
+    for name, items in splits.items():
+        d = out_dir / name
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "items.json").write_text(json.dumps(items, ensure_ascii=False, indent=2))
+    return out_dir
+
+
 def load_split(split_dir: str | Path, name: str) -> list[dict[str, Any]]:
     path = Path(split_dir) / name / "items.json"
     if not path.exists():

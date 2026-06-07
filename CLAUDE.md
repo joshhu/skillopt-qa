@@ -58,8 +58,12 @@ uv run pytest tests/test_trainer_functional.py::test_fit_accepts_improving_edit 
   (有界更新)、`OptimizerState.rejected_edits` 記住最近 3 個被拒版本以避免重複提案、
   每步僅一次需過閘門的編輯(慢更新)。**接受編輯後拒絕記憶會清空**。
 - **提早停止**:連續 `patience` 次拒絕即停。
-- **prompt 字串刻意保留英文**(`SEED_SKILL`、`_OPTIMIZER_SYSTEM`、`BASE_INSTRUCTIONS`),
-  對模型推理較穩定——即使本專案規範要求中文回覆,這些字串不要翻成中文。
+- **prompt 字串語言**:agent 的 `BASE_INSTRUCTIONS` 與 optimizer 的 `_OPTIMIZER_SYSTEM`
+  指令骨架刻意保留英文(對模型指令較穩定,不要翻成中文)。但**產出的 SKILL 文字
+  語言由 `cfg.skill_language` 決定**(以 "zh" 開頭即繁中):種子由
+  `optimizer.default_seed_skill()` 在 `SEED_SKILL`(英)/`SEED_SKILL_ZH`(繁中)間挑選,
+  繁中時 `_optimizer_system()` 追加 `_ZH_DIRECTIVE` 強制 optimizer 以繁體中文(台灣、
+  不得簡體)產出 SKILL。故 HotpotQA 仍全程英文,DRCD 全程繁中、`best_skill.md` 為繁中。
 - **reasoning 模型**:`enable_thinking=false` 經 vLLM `chat_template_kwargs` 關閉思考以
   大幅加速;agent 只讀最終 `content`,不讀思考內容。
 

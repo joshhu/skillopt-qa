@@ -19,12 +19,32 @@ from .agent import Trajectory
 from .config import Config
 from .llm import ChatLLM
 
-# 注意:種子技能與 optimizer 的 system prompt 刻意保留英文,對模型較穩定。
+# 注意:optimizer 的 system prompt 指令骨架刻意保留英文(對模型指令較穩定)。
+# 但**產出的 SKILL 文字語言由 benchmark 決定**:英文 benchmark(HotpotQA)用英文
+# 種子與英文 SKILL;中文 benchmark(DRCD)用繁中種子,並透過 `_ZH_DIRECTIVE`
+# 規定 optimizer 以繁體中文(台灣、不得簡體)產出 SKILL。語言由 `cfg.skill_language`
+# 選擇(以 "zh" 開頭視為繁中),兩條 pipeline 因此各自語言一致、互不干擾。
 SEED_SKILL = (
     "Read the question carefully and identify which paragraphs are relevant. "
     "Combine facts across paragraphs when the question requires multiple hops. "
     "Give the most specific answer supported by the context."
 )
+
+SEED_SKILL_ZH = (
+    "仔細閱讀問題,找出與問題相關的段落。"
+    "當問題需要跨段落整合(多跳推理)時,把不同段落的事實組合起來。"
+    "只根據提供的 context 作答,給出 context 能支持的最具體答案。"
+)
+
+
+def is_chinese(language: str) -> bool:
+    return str(language).lower().startswith("zh")
+
+
+def default_seed_skill(language: str) -> str:
+    """依語言挑選內建種子技能(`cfg.seed_skill` 留空時使用)。"""
+    return SEED_SKILL_ZH if is_chinese(language) else SEED_SKILL
+
 
 _OPTIMIZER_SYSTEM = (
     "You are a prompt optimizer. You improve a natural-language SKILL that is "
@@ -40,6 +60,16 @@ _OPTIMIZER_SYSTEM = (
     "- Output ONLY the full revised skill text. No preamble, no explanation, no "
     "code fences."
 )
+
+# 繁中 pipeline 追加的語言規則(插在 Principles 之後)。
+_ZH_DIRECTIVE = (
+    "\n\nThe SKILL MUST be written in Traditional Chinese (Taiwan). Never use "
+    "Simplified Chinese or mainland-China terminology."
+)
+
+
+def _optimizer_system(language: str) -> str:
+    return _OPTIMIZER_SYSTEM + _ZH_DIRECTIVE if is_chinese(language) else _OPTIMIZER_SYSTEM
 
 
 @dataclass
@@ -96,7 +126,7 @@ def propose_skill(
         "breaking the CORRECT ones. Output only the revised skill text."
     )
     revised = llm.chat(
-        _OPTIMIZER_SYSTEM,
+        _optimizer_system(cfg.skill_language),
         user,
         model=cfg.model.optimizer_model,
         temperature=cfg.model.optimizer_temperature,

@@ -2,6 +2,11 @@
 
 正規化沿用官方 HotpotQA 評估:轉小寫、移除冠詞、去標點、收斂空白。
 正規化後完全相符即把該軌跡標記為 `correct`。
+
+中文支援:斷詞採 **mixed segmentation**——CJK 字元逐字當作一個 token,Latin
+字母/數字連續段保留為整個 token。中文沒有空白,若沿用 `.split()` 整個答案會塌成
+單一 token,使 F1 退化成 EM;逐字斷詞讓中文 F1 重新具有部分重疊的意義,同時對
+英文行為零影響。標點移除也擴及常見全形/CJK 標點。
 """
 
 from __future__ import annotations
@@ -14,7 +19,13 @@ from dataclasses import dataclass
 from .agent import Trajectory
 
 _ARTICLES = re.compile(r"\b(a|an|the)\b", re.UNICODE)
-_PUNCT_TABLE = str.maketrans("", "", string.punctuation)
+# 全形/CJK 標點(ASCII 標點仍由 string.punctuation 處理)。
+_CJK_PUNCT = "，。、！？；：「」『』（）〔〕【】《》〈〉…—～·．“”‘’"
+_PUNCT_TABLE = str.maketrans("", "", string.punctuation + _CJK_PUNCT)
+# 比對是否為 CJK 字元(中日韓統一表意文字及常見擴展區)。
+_CJK_RE = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
+# 連續的 Latin 字母/數字段,或單一 CJK 字元。
+_TOKEN_RE = re.compile(r"[a-z0-9]+|[㐀-䶿一-鿿豈-﫿]")
 
 
 def normalize(text: str) -> str:
@@ -24,6 +35,11 @@ def normalize(text: str) -> str:
     return " ".join(text.split())
 
 
+def _tokenize(text: str) -> list[str]:
+    """mixed segmentation:CJK 逐字、Latin 連續字母/數字為一詞。"""
+    return _TOKEN_RE.findall(normalize(text))
+
+
 def exact_match(pred: str, golds: list[str]) -> float:
     npred = normalize(pred)
     return float(any(npred == normalize(g) for g in golds))
@@ -31,9 +47,9 @@ def exact_match(pred: str, golds: list[str]) -> float:
 
 def f1(pred: str, golds: list[str]) -> float:
     best = 0.0
-    pred_toks = normalize(pred).split()
+    pred_toks = _tokenize(pred)
     for gold in golds:
-        gold_toks = normalize(gold).split()
+        gold_toks = _tokenize(gold)
         if not pred_toks or not gold_toks:
             best = max(best, float(pred_toks == gold_toks))
             continue

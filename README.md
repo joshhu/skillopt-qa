@@ -66,28 +66,43 @@ curl http://localhost:8080/v1/models
 ## 1. 下載資料集
 
 ```bash
+# 英文多跳推理(HotpotQA)
 uv run skillopt-download --out data/hotpotqa --n-train 64 --n-val 64 --n-test 200
+
+# 繁體中文閱讀理解(DRCD;訓練資料與技能皆為繁體中文)
+uv run skillopt-download --benchmark drcd --out data/drcd --n-train 64 --n-val 64 --n-test 200
 ```
 
-會從 HuggingFace 下載 HotpotQA,並寫出:
+會從 HuggingFace 下載對應資料集,並寫出:
 
 ```
-data/hotpotqa/
+data/<benchmark>/
 ├── train/items.json
 ├── val/items.json
 └── test/items.json
 ```
 
-每筆資料格式:`{"id", "question", "context", "answers": [...]}`。train/val 取自
-HotpotQA 的 `train` 切分;test 取自 `validation`(其答案為公開),因此 test 集在
-優化過程中始終未被看過。
+每筆資料格式:`{"id", "question", "context", "answers": [...]}`。train/val 取自原始
+`train` 切分;test 取自獨立的保留切分,因此 test 集在優化過程中始終未被看過。
+
+**繁體中文(DRCD)**:資料來自 [`voidful/DRCD`](https://huggingface.co/datasets/voidful/DRCD)
+(台達電出品、源自中文維基的 SQuAD 式繁體中文閱讀理解)。整條 pipeline 為繁中——
+內建種子技能、optimizer 產出的技能皆為繁體中文,評分器也採 mixed-segmentation
+中文斷詞(CJK 逐字、英文整詞),讓中文 F1 具有部分重疊的意義。
 
 ## 2. 訓練技能
 
 ```bash
+# 英文(HotpotQA)
 uv run skillopt-train \
     --config configs/hotpotqa/default.yaml \
     --split-dir data/hotpotqa \
+    --out-root outputs
+
+# 繁體中文(DRCD);產出的 best_skill.md 為繁體中文
+uv run skillopt-train \
+    --config configs/drcd/default.yaml \
+    --split-dir data/drcd \
     --out-root outputs
 ```
 
@@ -153,7 +168,7 @@ val——且**全程未更動任何模型權重,只改了一份 `skill.md`**。
 |------|------|
 | `skillopt/config.py` | YAML 設定 + CLI 覆寫 |
 | `skillopt/llm.py` | OpenAI 相容的 chat 客戶端 |
-| `skillopt/data.py` | HotpotQA 下載與切分建立 |
+| `skillopt/data.py` | HotpotQA / DRCD 下載與切分建立 |
 | `skillopt/agent.py` | 凍結的 QA agent + 平行 rollout |
 | `skillopt/evaluator.py` | EM / token-F1 評分 |
 | `skillopt/optimizer.py` | 文字空間技能優化器 |

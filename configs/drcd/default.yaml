@@ -1,0 +1,26 @@
+benchmark: drcd
+metric: f1               # 驗證閘門指標:"f1" 或 "em"。中文已支援 mixed-segmentation 斷詞
+seed_skill: ""          # 留空 -> 使用內建的繁體中文種子技能(由 skill_language 決定)
+skill_language: zh-Hant # 種子與 optimizer 產出的 SKILL 皆為繁體中文(台灣)
+
+model:
+  base_url: "http://localhost:8080/v1"   # 本機 vLLM(docker-proxy 把 host 8080 映射到容器內 8000)
+  api_key_env: "OPENAI_API_KEY"          # 多數本機服務會忽略此值
+  target_model: "qwen3.6"                # 你的 vLLM 服務回報的 served-model-name(中文能力佳)
+  optimizer_model: "qwen3.6"
+  temperature: 0.0          # agent 以確定性方式作答
+  optimizer_temperature: 0.7
+  enable_thinking: false    # 關閉 Qwen3 思考以大幅加速(QA 抽取不需長 CoT)
+  max_tokens: 512           # 思考關閉後,答案很短即可
+  optimizer_max_tokens: 1024
+  timeout: 300.0            # reasoning 模型/高負載下需較長 timeout
+  max_retries: 4
+
+train:
+  num_epochs: 5
+  batch_size: 8
+  val_size: 24        # 每步用這麼多 val 筆數把關(0 = 全部)
+  workers: 16         # 平行 rollout worker 數
+  patience: 4         # 連續被拒絕 N 次就提早停止
+  min_improvement: 0.0
+  seed: 0

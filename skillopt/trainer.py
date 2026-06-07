@@ -52,7 +52,7 @@ class Trainer:
         if cfg.train.val_size and cfg.train.val_size < len(val_items):
             val_items = val_items[:cfg.train.val_size]
 
-        skill = cfg.seed_skill.strip() or optimizer.SEED_SKILL
+        skill = cfg.seed_skill.strip() or optimizer.default_seed_skill(cfg.skill_language)
         state = optimizer.OptimizerState()
 
         base = self._val_metric(skill, val_items)
